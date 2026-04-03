@@ -1,0 +1,20 @@
+import pandas as pd
+from datetime import datetime
+import os
+
+LOG_FILE = "database/logs.csv"
+
+def log_action(file_name, action):
+    log_entry = {
+        "file_name": file_name,
+        "action": action,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    if os.path.exists(LOG_FILE):
+        df = pd.read_csv(LOG_FILE)
+    else:
+        df = pd.DataFrame(columns=["file_name", "action", "timestamp"])
+
+    df = pd.concat([df, pd.DataFrame([log_entry])], ignore_index=True)
+    df.to_csv(LOG_FILE, index=False)

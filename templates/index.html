@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure File Storage System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-shadow: 0 0 10px #38bdf8;">Secure File Storage System</h1>
+        <p>Upload a file to generate hashes, encrypt, decrypt, or verify integrity.</p>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <br><br>
+
+            <button type="submit" name="action" value="hash">Generate Hash</button>
+            <button type="submit" name="action" value="encrypt">Encrypt File</button>
+
+            <br><br>
+            <input type="text" name="secret_key" placeholder="Enter Secret Key for Decryption">
+            <br><br>
+            <button type="submit" name="action" value="decrypt">Decrypt File</button>
+
+            <br><br>
+            <input type="text" name="file_id_input" placeholder="Enter File ID for Integrity Check">
+            <br><br>
+            <button type="submit" name="action" value="integrity">Check Integrity</button>
+        </form>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        {% if success %}
+            <p class="success">{{ success }}</p>
+
+            <div class="result-box">
+                {% if file_name %}
+                    <p><strong>File Name:</strong> {{ file_name }}</p>
+                {% endif %}
+
+                {% if file_id %}
+                    <p><strong>File ID:</strong> {{ file_id }}</p>
+                {% endif %}
+
+                {% if sha256 %}
+                    <p><strong>SHA-256:</strong> {{ sha256 }}</p>
+                {% endif %}
+
+                {% if sha512 %}
+                    <p><strong>SHA-512:</strong> {{ sha512 }}</p>
+                {% endif %}
+
+                {% if encrypted_file %}
+                    <p><strong>Encrypted File Saved At:</strong> {{ encrypted_file }}</p>
+                {% endif %}
+
+                {% if secret_key %}
+                    <p><strong>Secret Key:</strong> {{ secret_key }}</p>
+                {% endif %}
+
+                {% if decrypted_file %}
+                    <p><strong>Decrypted File Saved At:</strong> {{ decrypted_file }}</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
