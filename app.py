@@ -1,3 +1,4 @@
+from ml_model.predict import predict_sql_injection
 from flask import Flask, render_template, request
 import pandas as pd
 import uuid
@@ -7,6 +8,7 @@ from datetime import datetime
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
+import requests
 
 app = Flask(__name__)
 
@@ -15,6 +17,8 @@ LOG_DB = "database/logs.csv"
 UPLOAD_FOLDER = "uploads"
 ENCRYPTED_FOLDER = "uploads/encrypted"
 DECRYPTED_FOLDER = "uploads/decrypted"
+
+VT_API_KEY = "1e73ed7f97b0cc5cb063c0e6a120d62900c60e73313aa614cecd59176e46599d"
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(ENCRYPTED_FOLDER, exist_ok=True)
@@ -80,7 +84,6 @@ def check_integrity(file_id, uploaded_file):
         return False, "Hash database not found."
 
     df = pd.read_csv(HASH_DB)
-
     matched_rows = df[df["file_id"] == file_id]
 
     if matched_rows.empty:
@@ -95,6 +98,31 @@ def check_integrity(file_id, uploaded_file):
         return True, "Integrity Verified: File is unchanged."
     else:
         return False, "Integrity Check Failed: File has been tampered with."
+
+def check_malware(file_hash):
+    url = f"https://www.virustotal.com/api/v3/files/{file_hash}"
+    headers = {
+        "x-apikey": VT_API_KEY
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        stats = data["data"]["attributes"]["last_analysis_stats"]
+
+        malicious = stats.get("malicious", 0)
+        suspicious = stats.get("suspicious", 0)
+        harmless = stats.get("harmless", 0)
+        undetected = stats.get("undetected", 0)
+
+        return f"Malicious: {malicious}, Suspicious: {suspicious}, Harmless: {harmless}, Undetected: {undetected}"
+
+    elif response.status_code == 404:
+        return "File not found in VirusTotal database."
+
+    else:
+        return f"Error checking malware. Status code: {response.status_code}"
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -130,7 +158,6 @@ def home():
                 f.write(iv + ciphertext)
 
             key_hex = key.hex()
-
             log_action(uploaded_file.filename, "File encrypted")
 
             return render_template(
@@ -192,7 +219,43 @@ def home():
                     file_name=uploaded_file.filename
                 )
 
+        elif action == "malware":
+            sha256, _ = generate_hashes(uploaded_file)
+            result = check_malware(sha256)
+            log_action(uploaded_file.filename, "Malware checked")
+
+            return render_template(
+                "index.html",
+                success="Malware check completed.",
+                file_name=uploaded_file.filename,
+                malware_result=result
+            )
+        elif action == "sql_detect":
+            user_query = request.form.get("user_query")
+
+            if not user_query:
+                return render_template("index.html", error="Please enter a query to check.")
+
+            prediction, confidence = predict_sql_injection(user_query)
+            log_action("SQL Query", "SQL injection checked")
+
+            if str(prediction).lower() in ["1", "malicious", "attack", "sql injection"]:
+                result_message = "SQL Injection Detected"
+            else:
+                result_message = "Input appears safe"
+
+            if confidence is not None:
+                result_message += f" (Confidence: {confidence:.2f})"
+
+            return render_template(
+                "index.html",
+                success="SQL injection detection completed.",
+                user_query=user_query,
+                sql_result=result_message
+            )
+
     return render_template("index.html")
 
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
