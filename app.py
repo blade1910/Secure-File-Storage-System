@@ -239,7 +239,7 @@ def home():
             prediction, confidence = predict_sql_injection(user_query)
             log_action("SQL Query", "SQL injection checked")
 
-            if str(prediction).lower() in ["1", "malicious", "attack", "sql injection"]:
+            if prediction == 0:
                 result_message = "SQL Injection Detected"
             else:
                 result_message = "Input appears safe"
